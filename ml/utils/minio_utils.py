@@ -87,3 +87,19 @@ def upload_file_to_bucket(bucket: Bucket, file_path: str, target_path: str | Non
         return
     bucket.upload_file(file_path, target_path or file_path)
     print(f"File {file_path} uploaded to bucket {bucket.name}")
+
+
+def list_objects_in_bucket(bucket_name: str, file_name: str | None = None) -> list[str]:
+    """
+    List all objects in a MinIO bucket.
+
+    Args:
+        bucket (Bucket): The MinIO bucket to list objects from.
+    """
+    bucket = get_or_create_bucket(bucket_name)
+    file_paths = [
+        f"s3a://{bucket_name}/{obj.key}"
+        for obj in bucket.objects.all()
+        if file_name is None or file_name in obj.key
+    ]
+    return file_paths
