@@ -1,40 +1,24 @@
 from dotenv import load_dotenv
 import os
-from pyspark.sql import Row
+from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.types import StructType
+from pyspark.sql.window import Window
 
 from ml.utils.minio_utils import list_objects_in_bucket
 from ml.utils.spark_utils import get_spark_session
-from ml.data.schemas import schema_out, user_schema, movie_schema
+from ml.data.schemas import user_schema, movie_schema
 
 
 load_dotenv()
 
-
-def assign_movie_ids(rows):
-    last_movie_id = None
-    
-    for r in rows:
-        
-        if r.UserID.endswith(":"):
-            # Extract MovieID
-            last_movie_id = r.UserID.replace(":", "").strip()
-            continue
-        
-        yield Row(
-            UserID=int(r.UserID) if r.UserID else None,
-            Rating=r.Rating,
-            Date=r.Date,
-            MovieID=int(last_movie_id) if last_movie_id else None
-        )
 
 def preprocess_neflix_user_data_multiple_files(
     bucket_name: str = "recommendation-system",
     file_name: str = "combined_data",
     schema: StructType = user_schema,
     output_path: str = "s3a://recommendation-system/data/silver/netflix_user_data.parquet",
-    coalesce_files: int = 4
+    invalid_output_path: str = "s3a://recommendation-system/data/silver/netflix_user_data_invalid.parquet",
 ):
     """
     Process Netflix user rating data from CSV files to Parquet format.
@@ -44,20 +28,29 @@ def preprocess_neflix_user_data_multiple_files(
         file_name: File name without extension
         schema: Schema for the user data
         output_path: S3 path for output Parquet file
+        invalid_output_patch: S3 path for output Parquet file containing invalid rows
     """
     print("Preprocessing Netflix user data")
+    spark = get_spark_session()
     files = list_objects_in_bucket(bucket_name=bucket_name, file_name=file_name)
     for file_path in files:
         print(f"Processing file {file_path}")
-        preprocess_netflix_user_data_file(input_path=file_path, schema=schema, output_path=output_path, coalesce_files=coalesce_files)
-    
+        preprocess_netflix_user_data_file(
+            spark=spark,
+            input_path=file_path,
+            schema=schema,
+            output_path=output_path,
+            invalid_output_path=invalid_output_path
+        )
+    spark.stop()
 
 
 def preprocess_netflix_user_data_file(
-    input_path: str = "s3a://recommendation-system/data/bronze/combined_data_*.txt",
-    schema: StructType = user_schema,
-    output_path: str = "s3a://recommendation-system/data/silver/netflix_user_data.parquet",
-    coalesce_files: int = 4
+    input_path: str,
+    schema: StructType,
+    output_path: str,
+    invalid_output_path: str,
+    spark: SparkSession | None = None,
 
 ) -> None:
     """
@@ -67,27 +60,53 @@ def preprocess_netflix_user_data_file(
         input_path: S3 path to input CSV files
         schema: Schema for the user data
         output_path: S3 path for output Parquet file
+        invalid_output_patch: S3 path for output Parquet file containing invalid rows
     """
     print("Preprocessing Netflix user data")
-    spark = get_spark_session()
+    if_close_spark = False
+    if spark is None:
+        spark = get_spark_session()
+        if_close_spark = True
+        
 
     # Read all matching files
-    df = spark.read.schema(schema).option("sep", ",").csv(input_path)
-    df = df.withColumn("file", F.input_file_name())
-    df = df.repartition(1, "file")
+    user_df = ( 
+        spark.read
+        .schema(schema)
+        .option("sep", ",")
+        .option("header", "false")
+        .csv(input_path)
+    )
+    
+    user_df = user_df.withColumn(
+        "is_movie",
+        F.col("UserID").endswith(":")
+    )
 
-    # df is your DataFrame with is_movie_header column
-    rdd = df.rdd.mapPartitions(assign_movie_ids)
-    df_out = spark.createDataFrame(rdd, schema=schema_out)
+    user_df = user_df.withColumn(
+        "MovieID",
+        F.when(F.col("is_movie"), F.regexp_replace("UserID", ":", ""))
+    )
+    
+    w = Window.orderBy(F.monotonically_increasing_id())
+
+    user_df = user_df.withColumn(
+        "MovieID",
+        F.last("MovieID", ignorenulls=True).over(w)
+    )
+    
+    user_df = user_df.filter(~F.col("is_movie"))
+    
+    df_processed = user_df.select("UserID", "Rating", "Date", "MovieID")
 
     # Write to parquet
-    df_out.coalesce(coalesce_files).write.mode("append").parquet(output_path)
+    df_processed.write.mode("append").parquet(output_path)
     
     # clean
-    df.unpersist() if "df" in locals() else None
     spark.catalog.clearCache()
-    spark.stop()
     print(f"Done! User data written in {output_path}")
+    if if_close_spark:
+        spark.stop()
 
 
 def preprocess_netflix_movie_data(
