@@ -12,6 +12,8 @@ def get_spark_session() -> SparkSession:
         .appName("PythonClient")   # type: ignore
 
         .master(os.getenv("SPARK_MASTER_ENDPOINT", "local[*]"))
+        .config("spark.executor.memory", "2g") \
+        .config("spark.driver.memory", "2g") \
         .config("spark.hadoop.metrics2.console.period", "0")
         .config("spark.hadoop.fs.s3a.access.key", os.getenv("MINIO_ROOT_USER"))
         .config("spark.hadoop.fs.s3a.secret.key", os.getenv("MINIO_ROOT_PASSWORD"))
