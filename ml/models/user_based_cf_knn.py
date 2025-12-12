@@ -11,7 +11,7 @@ USER_DATA_PATH = f"s3a://{BUCKET}/data/silver/netflix_user_data.parquet"
 USER_USER_CORR_PATH = f"s3a://{BUCKET}/data/gold/user_user_corr/"
 
 
-class CFUserkNN(BaseModel):
+class UserBasedCFkNN(BaseModel):
     """Collaborative Filtering User Based with k-nearest neighbours"""
     def __init__(self, k: int = 5):
         super().__init__()
