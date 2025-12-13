@@ -39,6 +39,14 @@ def get_both_users_rated_movies(user_id1: int, user_id2: int, user_data_df: Data
     pairs_user_ratings.show(truncate=False)
 
 
+def filter_user(all_user_data_df: DataFrame, user_id: int) -> DataFrame:
+    user_df = (
+        all_user_data_df
+        .filter(F.col("UserID") == user_id)
+    )
+    return user_df
+
+
 if __name__ == "__main__":
     # Start spark session
     spark = get_spark_session()
