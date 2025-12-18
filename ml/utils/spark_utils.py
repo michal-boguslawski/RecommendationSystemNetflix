@@ -6,19 +6,24 @@ from pyspark.sql import SparkSession
 load_dotenv()
 
 
-def get_spark_session() -> SparkSession:
+def get_spark_session(appName: str = "PythonClient") -> SparkSession:
     spark = (
         SparkSession.builder
-        .appName("PythonClient")   # type: ignore
+        .appName(appName)   # type: ignore
+        .master(os.getenv("SPARK_MASTER_ENDPOINT", "spark://spark-master:7077"))
+        # .master("spark://172.21.0.2:7077")
 
-        .master(os.getenv("SPARK_MASTER_ENDPOINT", "local[*]"))
-        # --- FIX SHUFFLE FETCH FAILURES ---
-        # External shuffle service (MUST also be running on workers)
-        # .config("spark.shuffle.service.enabled", "true")
-        # docker exec -it spark-worker-1 bash
-        # $SPARK_HOME/sbin/start-shuffle-service.sh
+        # --- EXECUTOR CONFIG (CRITICAL) ---
+        .config("spark.executor.memory", "4g")
+        .config("spark.executor.cores", "3")
+        .config("spark.executor.instances", "2")
+        # .config("spark.executor.memoryOverhead", "2g")
 
-        # Allow more time before marking executor as dead
+        # --- DRIVER SAFETY ---
+        .config("spark.driver.memory", "3g")
+        .config("spark.driver.maxResultSize", "512m")
+
+        # --- STABILITY ---
         .config("spark.network.timeout", "600s")
         .config("spark.executor.heartbeatInterval", "30s")
 
@@ -29,15 +34,15 @@ def get_spark_session() -> SparkSession:
         # Prevent dynamic allocation from killing executors too early
         .config("spark.dynamicAllocation.enabled", "false")
 
-        # --- MEMORY / STABILITY IMPROVEMENTS ---
-        # .config("spark.executor.memory", "2g")
-        # .config("spark.executor.cores", "1")        # safer on small nodes
-        # .config("spark.driver.memory", "2g")
+        # --- SHUFFLE ---
+        .config("spark.sql.shuffle.partitions", 1000)
+        # .config("spark.sql.files.maxPartitionBytes", "256MB")
 
-        # --- SHUFFLE & SERIALIZATION ---
+        # --- SERIALIZATION ---
         .config("spark.shuffle.spill.compress", "true")
         .config("spark.shuffle.spill.compress.codec", "lz4")
         .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+        .config("spark.cleaner.referenceTracking.cleanCheckpoints", "true")
 
         # --- S3 / MinIO ---
         .config("spark.hadoop.fs.s3a.access.key", os.getenv("MINIO_ROOT_USER"))
@@ -46,12 +51,19 @@ def get_spark_session() -> SparkSession:
         .config("spark.hadoop.fs.s3a.path.style.access", "true")
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
 
+        .config("spark.local.dir", "/tmp/spark-temp")
+
+        .config("spark.sql.adaptive.enabled", "true")
+        .config("spark.sql.adaptive.skewJoin.enabled", "true")
+        .config("spark.sql.autoBroadcastJoinThreshold", -1)
+
         .config(
             "spark.jars.packages",
             "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262"
         )
         .getOrCreate()
     )
+    # spark.sparkContext.setLogLevel("INFO")
     return spark
 
 

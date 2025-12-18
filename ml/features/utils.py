@@ -33,7 +33,13 @@ def normalize_ratings_df(df: DataFrame, user_stats_df: DataFrame) -> DataFrame:
         DataFrame with normalized ratings
     """
     print("Normalizing ratings")
-    df = df.join(user_stats_df, on="UserID", how="left")
+
+    user_stats_df_broadcast = F.broadcast(user_stats_df)
+    df = df.repartition("UserID")
+
+    df = df.join(user_stats_df_broadcast, on="UserID", how="left")
+    df = df.withColumn("Rating", F.col("Rating").cast("float"))
+
     df = df.withColumn(
         "Rating",
         F.when(

@@ -1,1 +1,1 @@
-apt install openjdk-21-jdk
+apt install openjdk-17-jdk

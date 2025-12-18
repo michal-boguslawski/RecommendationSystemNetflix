@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 import os
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.types import StructType
 from pyspark.sql.window import Window
