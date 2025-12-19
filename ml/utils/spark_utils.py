@@ -1,9 +1,22 @@
 from dotenv import load_dotenv
 import os
 from pyspark.sql import SparkSession
-
+import time
 
 load_dotenv()
+
+
+def monitor_progress(sc, interval=5):
+    tracker = sc.statusTracker()
+    while True:
+        active_stages = tracker.getActiveStageIds()
+        if not active_stages:
+            break
+        for stage_id in active_stages:
+            stage_info = tracker.getStageInfo(stage_id)
+            if stage_info:
+                print(f"[Progress] Stage {stage_id}: {stage_info.numActiveTasks()} active / {stage_info.numTasks()} total")
+        time.sleep(interval)
 
 
 def get_spark_session(appName: str = "PythonClient") -> SparkSession:
@@ -35,7 +48,9 @@ def get_spark_session(appName: str = "PythonClient") -> SparkSession:
         .config("spark.dynamicAllocation.enabled", "false")
 
         # --- SHUFFLE ---
-        .config("spark.sql.shuffle.partitions", 1000)
+        .config("spark.sql.shuffle.partitions", "1000")
+        .config("spark.sql.adaptive.coalescePartitions.minPartitionSize", 200)
+        .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
         # .config("spark.sql.files.maxPartitionBytes", "256MB")
 
         # --- SERIALIZATION ---
@@ -63,6 +78,7 @@ def get_spark_session(appName: str = "PythonClient") -> SparkSession:
         )
         .getOrCreate()
     )
+
     # spark.sparkContext.setLogLevel("INFO")
     return spark
 

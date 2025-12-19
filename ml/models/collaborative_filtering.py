@@ -7,16 +7,17 @@ import pyspark.sql.functions as F
 
 from .base import BaseModel
 from ml.features.utils import normalize_ratings_df
+from ml.utils.spark_utils import monitor_progress
 
 
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
 BUCKET = os.getenv("MINIO_BUCKET_NAME", "recommendation-system")
-USER_DATA_PATH = f"s3a://{BUCKET}/data/silver/netflix_user_data.parquet"
-USER_STATS_PATH = f"s3a://{BUCKET}/data/gold/user_stats/"
-USER_NEIGHBORS_PATH = f"s3a://{BUCKET}/data/gold/models/user_based_collaborative_filtering/user_neighbours/"
+USER_DATA_PATH = f"s3a://{BUCKET}/data/silver/netflix_user_data/v1"
+USER_STATS_PATH = f"s3a://{BUCKET}/data/gold/user_stats/v1"
+USER_NEIGHBORS_PATH = f"s3a://{BUCKET}/data/gold/models/user_based_collaborative_filtering/user_neighbors/v1"
 
 
-class UserBasedCollaborativeFilertingkNN(BaseModel):
+class UserBasedCollaborativeFilteringKNN(BaseModel):
     """
     Implementation
     """
@@ -83,20 +84,30 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
 
         Returns:
             DataFrame: Spark DataFrame containing correlations between users.
-                Columns: user, neighbour, corr
+                Columns: user, neighbor, corr
         """
+        persisted_df = None
         min_corated_movies = min_corated_movies or self.min_corated_movies
 
         if "block" not in user_df.columns:
             user_df = user_df.withColumn("block", F.lit(0))
-        user_df = user_df.repartition("block", "UserID")
 
         if all_users_df is None:
-            all_users_df = user_df
+            # ONE logical plan
+            base_df = (
+                user_df
+                # .repartition(1000, "block", "UserID")
+                .persist(StorageLevel.DISK_ONLY)
+            )
 
-        if "block" not in all_users_df.columns:
-            all_users_df = all_users_df.withColumn("block", F.lit(0))
-        all_users_df.persist(StorageLevel.DISK_ONLY)
+            user_df = base_df
+            all_users_df = base_df
+            persisted_df = all_users_df
+        else:
+            user_df = F.broadcast(user_df)
+            # all_users_df is large, user_df is small
+            if "block" not in all_users_df.columns:
+                all_users_df = all_users_df.withColumn("block", F.lit(0))
 
         # Join normalized ratings for same movies for each pair of users inside block
         pairs = (
@@ -109,18 +120,19 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
             )
             .select(
                 F.col("u.UserID").alias("user"),
-                F.col("n.UserID").alias("neighbour"),
+                F.col("n.UserID").alias("neighbor"),
                 F.col("u.Rating").alias("x"),
                 F.col("n.Rating").alias("y")
             )
-            .repartition("user", "neighbour")
+            .repartition(2048, "user", "neighbor")
         )
-        all_users_df.unpersist()
+        if persisted_df is not None:
+            persisted_df.unpersist(blocking=False)
 
         # Calculate components needed for correlations between users
         stats_df = (
             pairs
-            .groupBy("user", "neighbour")
+            .groupBy("user", "neighbor")
             .agg(
                 F.count("*").alias("n"),
                 F.sum("x").alias("sum_x"),
@@ -130,6 +142,7 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
                 F.sum(F.col("y") * F.col("y")).alias("sum_y2"),
             )
             .filter(F.col("n") >= min_corated_movies)  # prune weak correlations early
+            .repartition(1024, "user", "neighbor")
         )
 
         # Calculate correlations
@@ -146,7 +159,7 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
                 )
             )
             .filter(F.col("corr") > self.min_corr_strength)
-            .select("user", "neighbour", "corr")
+            .select("user", "neighbor", "corr")
         )
 
         # Add other direction of correlation for filtering only 50 strongest correlations for every user
@@ -155,8 +168,8 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
             .unionAll(
                 corrs_df
                 .select(
-                    F.col("neighbour").alias("user"),
-                    F.col("user").alias("neighbour"),
+                    F.col("neighbor").alias("user"),
+                    F.col("user").alias("neighbor"),
                     F.col("corr")
                 )
             )
@@ -183,7 +196,8 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
         Write correlations into s3 bucket in parquet format
         """
         neighbors = neighbors.withColumn("version_date", F.lit(CURRENT_DATE))
-        neighbors.write.partitionBy("version_date").mode("append").parquet(USER_NEIGHBORS_PATH)
+        neighbors.coalesce(8).write.partitionBy("version_date").mode("append").parquet(USER_NEIGHBORS_PATH)
+        print(f"Done! Correlations written in {USER_NEIGHBORS_PATH}")
 
     def train(self, user_data_df: DataFrame, user_stats_df: DataFrame):
         """
@@ -213,7 +227,6 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
 
         # Limiting to only k strongest correlations for every user
         neighbors = self._filter_k_nearest_neighbors(corrs_df)
-        neighbors.repartition(16, "user")
 
         # Write correlations into s3 bucket in parquet format
         self._write_neighbors_correlations(neighbors)
@@ -233,7 +246,7 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
             user_data_df (DataFrame): Spark DataFrame containing user ratings data.
                 Expected columns: UserID, MovieID, Rating
             user_neigbors_corrs_df (DataFrame): Spark DataFrame containing correlations between users.
-                Expected columns: user, neighbour, corr
+                Expected columns: user, neighbor, corr
 
         Returns:
             dict: A dictionary containing predicted ratings for the target user.
@@ -245,7 +258,7 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
             user_data_df.alias("u")
             .join(
                 user_neighbors.alias("n"),
-                on=F.col("u.UserID") == F.col("n.neighbour"),
+                on=F.col("u.UserID") == F.col("n.neighbor"),
                 how="inner"
             )
             .select(F.col("u.MovieID"), F.col("u.Rating"), F.col("n.corr"))
@@ -274,14 +287,18 @@ class UserBasedCollaborativeFilertingkNN(BaseModel):
 if __name__ == "__main__":
     from ml.utils.spark_utils import get_spark_session
     from ml.features.utils import filter_latest_df_version
-    spark = get_spark_session("Test_predict")
+    spark = get_spark_session("TestCollaborativeFiltering")
     user_data_df = spark.read.parquet(USER_DATA_PATH)
     user_stats_df = spark.read.parquet(USER_STATS_PATH)
-    user_neigbors_corrs_df = spark.read.parquet(USER_NEIGHBORS_PATH)
 
-    # user_data_df = filter_latest_df_version(user_data_df)
     user_stats_df = filter_latest_df_version(user_stats_df)
 
-    model = UserBasedCollaborativeFilertingkNN()
-    preds = model.predict_user(user_id=923084, user_data_df=user_data_df, user_neigbors_corrs_df=user_neigbors_corrs_df)
-    print(preds)
+    model = UserBasedCollaborativeFilteringKNN()
+    model.train(user_data_df, user_stats_df)
+
+    # user_data_df = spark.read.parquet(USER_DATA_PATH).persist(StorageLevel.MEMORY_AND_DISK)
+    # user_neigbors_corrs_df = spark.read.parquet(USER_NEIGHBORS_PATH).persist(StorageLevel.MEMORY_AND_DISK)
+    # preds = model.predict_user(user_id=923084, user_data_df=user_data_df, user_neigbors_corrs_df=user_neigbors_corrs_df)
+    # user_neigbors_corrs_df.unpersist()
+    # user_data_df.unpersist()
+    # print(preds)

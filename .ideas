@@ -411,3 +411,19 @@ async def recommend(user_id: int, k: int = 10, model=Depends(get_model)):
 
 
 (Implement get_model to load model/connector at app startup.)
+
+src/
+└─ recsys/
+   └─ ml/
+      ├─ data/
+      ├─ features/
+      ├─ models/
+      ├─ training/
+      ├─ evaluation/
+      ├─ serving/
+      └─ pipelines/
+ml/
+├─ train.py
+├─ eval.py
+├─ predict.py
+├─ experiments/

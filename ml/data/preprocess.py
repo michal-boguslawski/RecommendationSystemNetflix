@@ -17,7 +17,7 @@ def preprocess_neflix_user_data_multiple_files(
     bucket_name: str = "recommendation-system",
     file_name: str = "combined_data",
     schema: StructType = user_schema,
-    output_path: str = "s3a://recommendation-system/data/silver/netflix_user_data.parquet",
+    output_path: str = "s3a://recommendation-system/data/silver/netflix_user_data/v1",
 ):
     """
     Process Netflix user rating data from CSV files to Parquet format.
@@ -100,7 +100,7 @@ def preprocess_netflix_user_data_file(
 def preprocess_netflix_movie_data(
     input_path: str = "s3a://recommendation-system/data/bronze/movie_titles.csv",
     schema: StructType = movie_schema,
-    output_path: str = "s3a://recommendation-system/data/silver/netflix_movie_data.parquet"
+    output_path: str = "s3a://recommendation-system/data/silver/netflix_movie_data/v1"
 ) -> None:
     """
     Process Netflix movie metadata from CSV to Parquet format.
@@ -126,7 +126,7 @@ def preprocess_netflix_movie_data(
 if __name__ == "__main__":
     print(20 * "=", "Preprocessing Netflix data", 20 * "=")
     BUCKET = os.getenv("MINIO_BUCKET_NAME", "recommendation-system")
-    OUTPUT_PATH = "s3a://recommendation-system/data/silver/netflix_user_data.parquet"
+    OUTPUT_PATH = "s3a://recommendation-system/data/silver/netflix_user_data/v1"
     preprocess_neflix_user_data_multiple_files(
         bucket_name=BUCKET,
         file_name="combined_data",
