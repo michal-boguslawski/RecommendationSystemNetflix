@@ -1,14 +1,16 @@
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 import shutil
 import sys
 import wget
 from zipfile import ZipFile
 
-from ml.utils.minio_utils import upload_file_to_bucket, get_or_create_bucket
+from ..utils.minio_utils import upload_file_to_bucket, get_or_create_bucket
 
 
-load_dotenv()
+env_path = os.path.join(Path(__file__).parent.parent.absolute(), ".env")
+load_dotenv(env_path)
 
 
 def download_dataset(dataset_url: str, local_dir: str, filename: str = "temp.zip") -> str:
@@ -90,11 +92,3 @@ def main(
     print("Cleaning up...")
     shutil.rmtree(local_path)  # Deletes folder and all contents
     print("Done!")
-
-
-if __name__ == "__main__":
-    # download dataset
-    dataset_path = sys.argv[1] if len(sys.argv) > 1 else "https://www.kaggle.com/api/v1/datasets/download/netflix-inc/netflix-prize-data"
-    local_path = sys.argv[2] if len(sys.argv) > 2 else "data/bronze/"
-    bucket_name = os.getenv("MINIO_BUCKET_NAME", None)
-    main(dataset_path, local_path, bucket_name)

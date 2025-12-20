@@ -1,16 +1,18 @@
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.types import StructType
 from pyspark.sql.window import Window
 
-from ml.utils.minio_utils import list_objects_in_bucket
-from ml.utils.spark_utils import get_spark_session
-from ml.data.schemas import user_schema, movie_schema
+from ..utils.minio_utils import list_objects_in_bucket
+from ..utils.spark_utils import get_spark_session
+from .schemas import user_schema, movie_schema
 
 
-load_dotenv()
+env_path = os.path.join(Path(__file__).parent.parent.absolute(), ".env")
+load_dotenv(env_path)
 
 
 def preprocess_neflix_user_data_multiple_files(
@@ -121,17 +123,3 @@ def preprocess_netflix_movie_data(
     spark.catalog.clearCache()
     spark.stop()
     print(f"Done! Movie data written in {output_path}")
-
-
-if __name__ == "__main__":
-    print(20 * "=", "Preprocessing Netflix data", 20 * "=")
-    BUCKET = os.getenv("MINIO_BUCKET_NAME", "recommendation-system")
-    OUTPUT_PATH = "s3a://recommendation-system/data/silver/netflix_user_data/v1"
-    preprocess_neflix_user_data_multiple_files(
-        bucket_name=BUCKET,
-        file_name="combined_data",
-        output_path=OUTPUT_PATH
-    )
-    # preprocess_netflix_user_data_file()
-    preprocess_netflix_movie_data()
-    print(20 * "=", "Done preprocessing data!", 20 * "=")

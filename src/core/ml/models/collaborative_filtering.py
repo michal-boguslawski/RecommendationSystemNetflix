@@ -1,19 +1,14 @@
 from datetime import datetime
-import os
 from pyspark import StorageLevel
 from pyspark.sql import DataFrame
 from pyspark.sql.window import Window
 import pyspark.sql.functions as F
 
 from .base import TrainingModel
-from ml.features.utils import normalize_ratings_df
+from ..features.utils import normalize_ratings_df
 
 
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
-BUCKET = os.getenv("MINIO_BUCKET_NAME", "recommendation-system")
-USER_DATA_PATH = f"s3a://{BUCKET}/data/silver/netflix_user_data/v1"
-USER_STATS_PATH = f"s3a://{BUCKET}/data/gold/user_stats/v1"
-USER_NEIGHBORS_PATH = f"s3a://{BUCKET}/data/gold/models/user_based_collaborative_filtering/user_neighbors/v1"
 
 
 class TrainingUserBasedCollaborativeFilteringKNN(TrainingModel):
@@ -226,7 +221,7 @@ class TrainingUserBasedCollaborativeFilteringKNN(TrainingModel):
             The method modifies the model's internal state by computing user similarities
             and storing nearest neighbors for each user.
         """
-        print(20 * "=", "Training model", 20 * "=")
+        print(30 * "=", "Training model", 30 * "=")
         normalized_user_df = self._preprocess_df(user_data_df, user_stats_df)
 
         # Calculate correlations between every pair of users within the same block
@@ -238,21 +233,4 @@ class TrainingUserBasedCollaborativeFilteringKNN(TrainingModel):
         # Assign correlations to a variable
         self.user_neighbors_corrs_df = neighbors
 
-        print(20 * "=", "Training model finished", 20 * "=")
-
-
-if __name__ == "__main__":
-    from ml.utils.spark_utils import get_spark_session
-    from ml.features.utils import filter_latest_df_version
-    spark = get_spark_session("Train User Based CF")
-    user_data_df = spark.read.parquet(USER_DATA_PATH)
-    user_stats_df = spark.read.parquet(USER_STATS_PATH)
-
-    user_stats_df = filter_latest_df_version(user_stats_df)
-
-    model = TrainingUserBasedCollaborativeFilteringKNN()
-    model.train(user_data_df, user_stats_df)
-
-    model.save_model(USER_NEIGHBORS_PATH)
-
-    spark.stop()
+        print(30 * "=", "Training model finished", 30 * "=")

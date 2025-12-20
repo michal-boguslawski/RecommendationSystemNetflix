@@ -1,11 +1,13 @@
 from botocore.exceptions import ClientError
 from boto3 import resource
-from mypy_boto3_s3.service_resource import S3ServiceResource, Bucket
 from dotenv import load_dotenv
+from mypy_boto3_s3.service_resource import S3ServiceResource, Bucket
 import os
+from pathlib import Path
 
 
-load_dotenv()
+env_path = os.path.join(Path(__file__).parent.parent.absolute(), ".env")
+load_dotenv(env_path)
 
 
 def get_minio_resource() -> S3ServiceResource:
