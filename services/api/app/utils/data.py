@@ -12,3 +12,8 @@ def load_movie_mapping(df: pd.DataFrame) -> dict:
     movie_df.set_index("MovieID", inplace=True)
     movie_df = movie_df["Title"]
     return movie_df.to_dict()
+
+def filter_out_rated_movies(user_id: int, user_data_df: pd.DataFrame, preds_dict: dict):
+    user_movies = user_data_df.loc[user_id]["MovieID"]
+    filtered_preds = {movie: preds_dict[movie] for movie in preds_dict if movie not in user_movies}
+    return filtered_preds

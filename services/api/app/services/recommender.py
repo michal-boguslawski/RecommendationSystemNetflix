@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from .collaborative_filtering import InferenceUserBasedCollaborativeFilteringKNN
-from ..utils.data import filter_top_k, remapping
+from ..utils.data import filter_top_k, remapping, filter_out_rated_movies
 
 
 BUCKET = os.getenv("MINIO_BUCKET_NAME", "recommendation-system")
@@ -18,6 +18,7 @@ class RecommenderService:
             user_id=user_id,
             user_data_df=user_data_df
         )
-        top_preds = filter_top_k(preds, k, True)
+        filtered_preds = filter_out_rated_movies(user_id, user_data_df, preds)
+        top_preds = filter_top_k(filtered_preds, k, True)
         remapped_preds = remapping(top_preds, movie_mapping)
         return remapped_preds

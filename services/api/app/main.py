@@ -1,7 +1,7 @@
 # api/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api.endpoints import recommend, health
+from .api.endpoints import info, recommend, health
 from .api.deps import init_resources
 
 def create_app() -> FastAPI:
@@ -11,6 +11,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, tags=["health"])
     app.include_router(recommend.router, tags=["recommend"])
+    app.include_router(info.router, tags=["info"])
 
     # allow requests from UI
     app.add_middleware(

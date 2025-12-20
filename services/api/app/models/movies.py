@@ -2,5 +2,5 @@
 from pydantic import BaseModel
 from typing import Dict
 
-class RecommendationResponse(BaseModel):
-    preds: Dict[str, float]
+class MoviesResponse(BaseModel):
+    movies: Dict[str, float]
