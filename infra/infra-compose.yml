@@ -4,6 +4,8 @@ services:
     image: python:3.10.12-slim
     container_name: working
     command: sleep inf
+    ports:
+      - "5000:5000"
     networks:
       - movie_recomm_net
     volumes:
