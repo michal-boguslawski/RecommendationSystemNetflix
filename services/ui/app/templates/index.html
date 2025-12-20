@@ -1,0 +1,14 @@
+<!doctype html>
+<title>Recommendation System</title>
+
+<body>
+  <h1>Hello Visitor</h1>
+  Welcome to my movie recommendation website. <br>
+  Here based on netflix movie dataset you can find recommendations for users existing in the dataset as well as pick movies yourself 
+  and find your recommendations. <br>
+  Multiple models for recommending movies are available to choose. Below you can find the list:
+  <li>User Based Collaborative Filtering with k Nearest Neighbors</li>
+  Here are possible options:<br>
+  <a href="{{ url_for('movies.recommend') }}">Predict for existing user</a> <br>
+  <a href="#">Predict for your selection</a>
+</body>
