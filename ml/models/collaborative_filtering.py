@@ -5,9 +5,8 @@ from pyspark.sql import DataFrame
 from pyspark.sql.window import Window
 import pyspark.sql.functions as F
 
-from .base import BaseModel
+from .base import TrainingModel
 from ml.features.utils import normalize_ratings_df
-from ml.utils.spark_utils import monitor_progress
 
 
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
@@ -17,9 +16,9 @@ USER_STATS_PATH = f"s3a://{BUCKET}/data/gold/user_stats/v1"
 USER_NEIGHBORS_PATH = f"s3a://{BUCKET}/data/gold/models/user_based_collaborative_filtering/user_neighbors/v1"
 
 
-class UserBasedCollaborativeFilteringKNN(BaseModel):
+class TrainingUserBasedCollaborativeFilteringKNN(TrainingModel):
     """
-    Implementation
+    Implementation of User Based Collaborative Filtering model with k Nearest Neighbors
     """
 
     def __init__(
@@ -34,6 +33,7 @@ class UserBasedCollaborativeFilteringKNN(BaseModel):
         self.min_corated_movies = min_corated_movies
         self.n_user_blocks = n_user_blocks
         self.min_corr_strength = min_corr_strength
+        self.user_neighbors_corrs_df: DataFrame | None = None
 
     def _preprocess_df(self, user_data_df: DataFrame, user_stats_df: DataFrame) -> DataFrame:
         """
@@ -191,13 +191,20 @@ class UserBasedCollaborativeFilteringKNN(BaseModel):
         )
         return neighbors
 
-    def _write_neighbors_correlations(self, neighbors: DataFrame):
+    def save_model(self, path: str):
         """
         Write correlations into s3 bucket in parquet format
         """
-        neighbors = neighbors.withColumn("version_date", F.lit(CURRENT_DATE))
-        neighbors.coalesce(8).write.partitionBy("version_date").mode("append").parquet(USER_NEIGHBORS_PATH)
-        print(f"Done! Correlations written in {USER_NEIGHBORS_PATH}")
+        if self.user_neighbors_corrs_df is None:
+            raise AttributeError("Model is not trained yet")
+        df = self.user_neighbors_corrs_df.withColumn("version_date", F.lit(CURRENT_DATE))
+        df \
+            .coalesce(8) \
+            .write \
+            .partitionBy("version_date") \
+            .mode("append") \
+            .parquet(path)
+        print(f"Done! Correlations written in {path}")
 
     def train(self, user_data_df: DataFrame, user_stats_df: DataFrame):
         """
@@ -228,77 +235,24 @@ class UserBasedCollaborativeFilteringKNN(BaseModel):
         # Limiting to only k strongest correlations for every user
         neighbors = self._filter_k_nearest_neighbors(corrs_df)
 
-        # Write correlations into s3 bucket in parquet format
-        self._write_neighbors_correlations(neighbors)
+        # Assign correlations to a variable
+        self.user_neighbors_corrs_df = neighbors
 
         print(20 * "=", "Training model finished", 20 * "=")
-
-    def predict_user(self, user_id: int, user_data_df: DataFrame, user_neigbors_corrs_df: DataFrame) -> dict:
-        """
-        Predict ratings for a given user based on the trained model.
-
-        This method predicts ratings for a given user by finding similar users
-        based on their rating patterns and using their ratings to predict ratings
-        for the target user.
-
-        Args:
-            user_id (int): ID of the user for whom ratings are to be predicted.
-            user_data_df (DataFrame): Spark DataFrame containing user ratings data.
-                Expected columns: UserID, MovieID, Rating
-            user_neigbors_corrs_df (DataFrame): Spark DataFrame containing correlations between users.
-                Expected columns: user, neighbor, corr
-
-        Returns:
-            dict: A dictionary containing predicted ratings for the target user.
-                Keys are movie IDs, and values are predicted ratings.
-        """
-        user_neighbors = user_neigbors_corrs_df.filter(F.col("user") == user_id)
-        
-        neighbors_data = (
-            user_data_df.alias("u")
-            .join(
-                user_neighbors.alias("n"),
-                on=F.col("u.UserID") == F.col("n.neighbor"),
-                how="inner"
-            )
-            .select(F.col("u.MovieID"), F.col("u.Rating"), F.col("n.corr"))
-        )
-
-        movie_preds = (
-            neighbors_data
-            .groupBy("MovieID")
-            .agg(
-                F.sum(F.col("corr") * F.col("Rating")).alias("sum_corr_rating"),
-                F.sum(F.abs(F.col("corr"))).alias("sum_abs_corr"),
-                F.count("*").alias("n")
-            )
-            .withColumn("pred", F.col("sum_corr_rating") / F.col("sum_abs_corr"))
-        )
-        movie_preds = movie_preds.select("MovieID", "pred").collect()
-        return {row.MovieID: row.pred for row in movie_preds}
-
-    def predict(self, *arg, **kwargs) -> dict | None:
-        return super().predict(*arg, **kwargs)
-
-    def batch_predict(self, list_ratings: list[dict], *args, **kwargs) -> list[dict] | None:
-        return super().batch_predict(list_ratings, *args, **kwargs)
 
 
 if __name__ == "__main__":
     from ml.utils.spark_utils import get_spark_session
     from ml.features.utils import filter_latest_df_version
-    spark = get_spark_session("TestCollaborativeFiltering")
+    spark = get_spark_session("Train User Based CF")
     user_data_df = spark.read.parquet(USER_DATA_PATH)
     user_stats_df = spark.read.parquet(USER_STATS_PATH)
 
     user_stats_df = filter_latest_df_version(user_stats_df)
 
-    model = UserBasedCollaborativeFilteringKNN()
+    model = TrainingUserBasedCollaborativeFilteringKNN()
     model.train(user_data_df, user_stats_df)
 
-    # user_data_df = spark.read.parquet(USER_DATA_PATH).persist(StorageLevel.MEMORY_AND_DISK)
-    # user_neigbors_corrs_df = spark.read.parquet(USER_NEIGHBORS_PATH).persist(StorageLevel.MEMORY_AND_DISK)
-    # preds = model.predict_user(user_id=923084, user_data_df=user_data_df, user_neigbors_corrs_df=user_neigbors_corrs_df)
-    # user_neigbors_corrs_df.unpersist()
-    # user_data_df.unpersist()
-    # print(preds)
+    model.save_model(USER_NEIGHBORS_PATH)
+
+    spark.stop()

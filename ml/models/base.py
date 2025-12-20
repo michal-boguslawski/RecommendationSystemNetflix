@@ -18,3 +18,13 @@ class BaseModel(ABC):
     @abstractmethod
     def batch_predict(self, list_ratings: list[dict], *args, **kwargs) -> list[dict] | None:
         pass
+
+
+class TrainingModel(ABC):
+    @abstractmethod
+    def train(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def save_model(self, path: str, *args, **kwargs):
+        pass
