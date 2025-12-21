@@ -1,0 +1,21 @@
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.option-list {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0 10 10 0;
+}
+
+.option-list .option {
+    text-align: left;
+}
+
+.option-list .option.selected {
+    background-color: #2563eb;
+    color: white;
+    font-weight: 600;
+}

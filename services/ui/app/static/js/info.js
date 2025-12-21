@@ -1,13 +1,24 @@
-async function loadUsers() {
-  const cached = sessionStorage.getItem(`users`);
-  if (cached) {
-    renderList(JSON.parse(cached), "users");
-    return;
-  }
+document.addEventListener("DOMContentLoaded", () => {
+  loadUsers().then(() => {
+    const userId = sessionStorage.getItem("current_userId");
+    if (!userId) return;
 
+    const button = document.querySelector(
+      `#users button[data-user_id="${userId}"]`
+    );
+
+    if (button) {
+      button.classList.add("selected");
+      updateMoviesTitle(userId);
+      loadRatedMovies(userId);
+    }
+  })
+});
+
+async function loadUsers(page = 1, pageSize = 20) {
   try {
     const response = await fetch(
-      `http://localhost:8000/list_users/`
+      `http://localhost:8000/list_users/?page=${page}&pageSize=${pageSize}`
     );
 
     if (!response.ok) {
@@ -17,26 +28,20 @@ async function loadUsers() {
     const data = await response.json();
     console.log("API response:", data);
 
-    // Cache in sessionStorage
-    sessionStorage.setItem(`users`, JSON.stringify(data));
-
     renderList(data, "users");
+
+    // Return data so you can chain actions
+    return data;
   } catch (err) {
     console.error("Failed to load users:", err);
     alert("Could not load users");
   }
 }
 
-async function loadMovies() {
-  const cached = sessionStorage.getItem(`movies`);
-  if (cached) {
-    renderDict(JSON.parse(cached), "movies");
-    return;
-  }
-
+async function loadMovies(page = 1, pageSize = 20) {
   try {
     const response = await fetch(
-      `http://localhost:8000/list_movies/`
+      `http://localhost:8000/list_movies/?page=${page}&pageSize=${pageSize}`
     );
 
     if (!response.ok) {
@@ -45,9 +50,6 @@ async function loadMovies() {
 
     const data = await response.json();
     console.log("API response:", data);
-
-    // Cache in sessionStorage
-    sessionStorage.setItem(`movies`, JSON.stringify(data));
 
     renderDict(data, "movies");
   } catch (err) {
@@ -63,9 +65,14 @@ function renderList(data, element_id) {
   // adjust based on API response shape
 
   for (const user_id of data.users ?? []) {
-    const li = document.createElement("li");
-    li.textContent = user_id;
-    container.appendChild(li);
+    const button = document.createElement("button");
+
+    button.textContent = user_id;
+    button.dataset.user_id = user_id;
+    button.className = "option";
+    button.id = `${element_id}_${user_id}`;
+
+    container.appendChild(button);
   }
 }
 
@@ -76,8 +83,13 @@ function renderDict(data, element_id) {
   // adjust based on API response shape
 
   for (const [movieId, movieName] of Object.entries(data.movies ?? {})) {
-    const li = document.createElement("li");
-    li.textContent = `${movieName} (${movieId})`;
-    container.appendChild(li);
+    const button = document.createElement("button");
+
+    button.textContent = `${movieName}`;
+    button.dataset.user_id = movieId;
+    button.className = "option";
+    button.id = `${element_id}_${movieId}`;
+
+    container.appendChild(button);
   }
 }

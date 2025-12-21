@@ -1,37 +1,37 @@
 <head>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 
 <title>Recommendations</title>
-<h1>Recommended movies</h1>
+<h1 id="moviesTitle">Recommended movies</h1>
 
 <div class="grid">
   <section>
     <h3>Users</h3>
-    <ul id="users"></ul>
+    <div id="users" class="option-list"></select>
   </section>
   <section>
     <h3>Select Movies</h3>
-    <ul id="movies"></ul>
+    <div id="movies" class="option-list"></select>
+  </section>
+  <section>
+    <h3>Rated Movies for selected user</h3>
+    <div id="rated_movies" class="option-list"></select>
   </section>
   <section>
     <h3>Recommendations</h3>
-    <ul id="recommendations"></ul>
-  </section>
-  <section>
-    <h3>Rated Movies</h3>
-    <ul id="rated_movies"></ul>
+    <div id="recommendations" class="option-list"></select>
   </section>
 </div>
 
-<button>Get Recommendations</button>
+<button id="get_recommendations">Get Recommendations</button>
 
 <script src="{{ url_for('static', filename='js/movies.js') }}"></script>
 <script src="{{ url_for('static', filename='js/info.js') }}"></script>
 <script>
   // Pass Flask variable into JS
   // loadRecommendations("{{ user_id }}");
-  // loadRatedMovies("{{ user_id }}");
+  // loadRatedMovies();
   loadUsers();
   loadMovies();
 </script>

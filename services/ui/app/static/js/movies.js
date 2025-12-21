@@ -1,9 +1,50 @@
-async function loadRatedMovies(userId) {
-  const cached = sessionStorage.getItem(`rated_movies_${userId}`);
-  if (cached) {
-    renderMovies(JSON.parse(cached), "rated_movies");
+// import { greet, loadData } from "./functions.js";
+
+document.getElementById("get_recommendations").addEventListener("click", () => {
+  const userId = sessionStorage.getItem("current_userId");
+
+  if (!userId) {
+    alert("Please select a user first");
     return;
   }
+
+  loadRecommendations(userId);
+});
+
+const usersContainer = document.getElementById("users");
+
+usersContainer.addEventListener("click", (e) => {
+  console.log("Click event:", e.target);
+  const button = e.target.closest("button[data-user_id]");
+  console.log("Found button:", button);
+  if (!button) return;
+
+  const userId = button.dataset.user_id;
+  console.log("Clicked userId:", userId);
+
+  usersContainer
+    .querySelectorAll("button.selected")
+    .forEach((btn) => btn.classList.remove("selected"));
+
+  button.classList.add("selected");
+  sessionStorage.setItem("current_userId", userId);
+
+  loadRatedMovies(userId);
+});
+
+async function loadRatedMovies(userId) {
+  if (!userId) {
+    userId = sessionStorage.getItem("current_userId");
+  }
+
+  if (!userId) {
+    console.warn("No userId provided or stored");
+    updateMoviesTitle(null);
+    return;
+  }
+
+  sessionStorage.setItem("current_userId", userId);
+  updateMoviesTitle(userId);
 
   try {
     const response = await fetch(
@@ -17,10 +58,7 @@ async function loadRatedMovies(userId) {
     const data = await response.json();
     console.log("API response:", data);
 
-    // Cache in sessionStorage
-    sessionStorage.setItem(`rated_movies_${userId}`, JSON.stringify(data));
-
-    renderMovies(data, "rated_movies");
+    renderRatings(data, "rated_movies");
   } catch (err) {
     console.error("Failed to load movies:", err);
     alert("Could not load movies");
@@ -28,11 +66,7 @@ async function loadRatedMovies(userId) {
 }
 
 async function loadRecommendations(userId) {
-  const cached = sessionStorage.getItem(`recommendation_movies_${userId}`);
-  if (cached) {
-    renderMovies(JSON.parse(cached), "recommendations");
-    return;
-  }
+
   try {
     const response = await fetch(
       `http://localhost:8000/recommend/${userId}`
@@ -45,25 +79,38 @@ async function loadRecommendations(userId) {
     const data = await response.json();
     console.log("API response:", data);
 
-    // Cache in sessionStorage
-    sessionStorage.setItem(`recommendation_movies_${userId}`, JSON.stringify(data));
-
-    renderMovies(data, "recommendations");
+    renderRatings(data, "recommendations");
   } catch (err) {
     console.error("Failed to load movies:", err);
     alert("Could not load movies");
   }
 }
 
-function renderMovies(data, element_id) {
+function renderRatings(data, element_id) {
   const container = document.getElementById(element_id);
   container.innerHTML = "";
 
   // adjust based on API response shape
 
   for (const [movieName, rating] of Object.entries(data.movies ?? {})) {
-    const li = document.createElement("li");
-    li.textContent = `${movieName} (${rating.toFixed(2)})`;
-    container.appendChild(li);
+    const button = document.createElement("button");
+
+    button.textContent = `${movieName} (${rating.toFixed(2)})`;
+    button.value = rating;
+    button.className = "option";
+    button.id = `${element_id}_${movieName}`;
+
+    container.appendChild(button);
   }
+}
+
+function updateMoviesTitle(userId) {
+  const title = document.getElementById("moviesTitle");
+
+  if (!userId) {
+    title.textContent = "Recommended movies";
+    return;
+  }
+
+  title.textContent = `Recommended movies for user ${userId}`;
 }

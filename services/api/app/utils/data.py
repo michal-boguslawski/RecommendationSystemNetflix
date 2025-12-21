@@ -16,7 +16,7 @@ def load_movie_mapping(df: pd.DataFrame) -> dict:
     movie_df = movie_df["Title"]
     return movie_df.to_dict()
 
-def filter_out_rated_movies(
+def drop_rated_movies(
     user_id: int,
     user_data_df: pd.DataFrame,
     preds_dict: dict
