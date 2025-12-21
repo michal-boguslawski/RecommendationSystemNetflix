@@ -1,8 +1,10 @@
 # api/app/api/endpoints/recommend.py
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 import pandas as pd
 from ..deps import get_users_data, get_movie_mapping
+from ..utils.cache import get_filtered_users
 from ...models.info import UsersResponse, ListMoviesResponse
+from ...utils.data import paginate_dict
 
 router = APIRouter()
 
@@ -18,22 +20,20 @@ async def list_users(
 ):
     print(f"Start listing users")
     # Filter selected movies
-    if rated_movies:
-        user_data_df = user_data_df[
-            user_data_df["MovieID"].isin(rated_movies)
-        ]
-
-    # Get unique and deterministric users
-    users = (
-        user_data_df.index
-        .unique()
-        .sort_values()
-        .to_list()
-    )
+    users = await get_filtered_users(user_data_df, rated_movies)
 
     # pagination
     start = (page - 1) * page_size
     end = start + page_size
+    print(f"End listing users from {start} to {end} for page {page} with size {page_size}")
+    
+    # Raise error if users is not a list
+    if not isinstance(users, list):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: expected a list of users, got {type(users).__name__}"
+        )
+
     paginated_users = users[start:end]
 
     return {
@@ -55,17 +55,19 @@ async def list_movies(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, le=100),
 ):
-    movies = list(movie_mapping.items())
     # pagination
-    start = (page - 1) * page_size
-    end = start + page_size
-    page_items  = movies[start:end]
+    paginated_items = paginate_dict(
+        movie_mapping,
+        page,
+        page_size
+    )
+    
     return {
-        "movies": dict(page_items),
+        "movies": paginated_items,
         "page": page,
         "page_size": page_size,
-        "total_movies": len(movies),
-        "total_pages": (len(movies) + page_size - 1) // page_size,
-        "has_next": end < len(movies),
-        "has_prev": start > 0,
+        "total_movies": len(movie_mapping),
+        "total_pages": (len(movie_mapping) + page_size - 1) // page_size,
+        "has_next": page * page_size < len(movie_mapping),
+        "has_prev": page > 1,
     }

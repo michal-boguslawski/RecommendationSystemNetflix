@@ -1,5 +1,7 @@
 # api/app/api/deps.py
 from fastapi import Request
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
 import os
 import pandas as pd
 from ..services.recommender import RecommenderService
@@ -26,6 +28,10 @@ def init_resources():
     user_data_df = load_pandas_df_from_s3(BUCKET, USERS_DATA_PATH)
     user_data_df.set_index("UserID", inplace=True)
     app.state.users_data = user_data_df
+    
+    # Setup cache
+    FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+
     print("Finish intitialization of FastApi application")
 
 def get_recommender(request: Request) -> RecommenderService:

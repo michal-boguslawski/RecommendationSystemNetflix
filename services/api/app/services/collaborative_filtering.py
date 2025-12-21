@@ -3,6 +3,7 @@ import os
 import pandas as pd
  
 from ..models.base import InferenceModel
+from ..utils.predictions import penalize_predictions
 from ..utils.s3 import load_pandas_df_from_s3
 
 BUCKET = os.getenv("MINIO_BUCKET_NAME", "recommendation-system")
@@ -61,7 +62,8 @@ class InferenceUserBasedCollaborativeFilteringKNN(InferenceModel):
                 count=("Rating", "count")
             )
             .assign(
-                pred=lambda x: x["score"] / x["corr_sum"] * x["count"] / (self.smoothing_factor + x["count"])
+                pred=lambda x: x["score"] / x["corr_sum"]
             )
         )
+        preds = penalize_predictions(preds, self.smoothing_factor)
         return preds["pred"].to_dict()
