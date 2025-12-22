@@ -1,3 +1,10 @@
+import { set_pagination } from "./pagination.js";
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadUsers();
+  loadMovies();
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   loadUsers().then(() => {
     const userId = sessionStorage.getItem("current_userId");
@@ -30,6 +37,8 @@ async function loadUsers(page = 1, pageSize = 20) {
 
     renderList(data, "users");
 
+    set_pagination("users_pagination", data.page, data.total_pages, data.has_next, data.has_prev);
+
     // Return data so you can chain actions
     return data;
   } catch (err) {
@@ -52,6 +61,8 @@ async function loadMovies(page = 1, pageSize = 20) {
     console.log("API response:", data);
 
     renderDict(data, "movies");
+
+    set_pagination("movies_pagination", data.page, data.total_pages, data.has_next, data.has_prev);
   } catch (err) {
     console.error("Failed to load movies:", err);
     alert("Could not load movies");

@@ -1,4 +1,8 @@
-// import { greet, loadData } from "./functions.js";
+import { set_pagination } from "./pagination.js";
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadRatedMovies();
+});
 
 document.getElementById("get_recommendations").addEventListener("click", () => {
   const userId = sessionStorage.getItem("current_userId");
@@ -59,6 +63,7 @@ async function loadRatedMovies(userId) {
     console.log("API response:", data);
 
     renderRatings(data, "rated_movies");
+    set_pagination("rated_movies_pagination", data.page, data.total_pages, data.has_next, data.has_prev);
   } catch (err) {
     console.error("Failed to load movies:", err);
     alert("Could not load movies");
@@ -80,6 +85,7 @@ async function loadRecommendations(userId) {
     console.log("API response:", data);
 
     renderRatings(data, "recommendations");
+    set_pagination("recommendations_pagination", data.page, data.total_pages, data.has_next, data.has_prev);
   } catch (err) {
     console.error("Failed to load movies:", err);
     alert("Could not load movies");

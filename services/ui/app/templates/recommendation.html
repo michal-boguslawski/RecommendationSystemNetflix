@@ -8,30 +8,26 @@
 <div class="grid">
   <section>
     <h3>Users</h3>
-    <div id="users" class="option-list"></select>
+    <div id="users" class="option-list"></div>
+    <ul id="users_pagination" class="pagination"></ul>
   </section>
   <section>
     <h3>Select Movies</h3>
-    <div id="movies" class="option-list"></select>
+    <div id="movies" class="option-list"></div>
+    <ul id="movies_pagination" class="pagination"></ul>
   </section>
   <section>
     <h3>Rated Movies for selected user</h3>
-    <div id="rated_movies" class="option-list"></select>
+    <div id="rated_movies" class="option-list"></div>
+    <ul id="rated_movies_pagination" class="pagination"></ul>
   </section>
   <section>
     <h3>Recommendations</h3>
-    <div id="recommendations" class="option-list"></select>
+    <div id="recommendations" class="option-list"></div>
+    <ul id="recommendations_pagination" class="pagination"></ul>
   </section>
 </div>
 
 <button id="get_recommendations">Get Recommendations</button>
 
-<script src="{{ url_for('static', filename='js/movies.js') }}"></script>
-<script src="{{ url_for('static', filename='js/info.js') }}"></script>
-<script>
-  // Pass Flask variable into JS
-  // loadRecommendations("{{ user_id }}");
-  // loadRatedMovies();
-  loadUsers();
-  loadMovies();
-</script>
+<script type="module" src="{{ url_for('static', filename='js/loading.js') }}"></script>

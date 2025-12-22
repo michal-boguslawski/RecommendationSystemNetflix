@@ -49,7 +49,7 @@ async def recommend(
     }
 
 @router.get(
-    "/list_movies/{user_id}",
+    "/movies/{user_id}",
     response_model=MoviesResponse,
 )
 async def list_movies(

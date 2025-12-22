@@ -19,3 +19,11 @@
     color: white;
     font-weight: 600;
 }
+
+.pagination .pagination-button.active {
+    background-color: #2563eb;
+    color: white;
+    font-weight: 600;
+    border: 3px solid darkblue;
+    border-radius: 5px;
+}

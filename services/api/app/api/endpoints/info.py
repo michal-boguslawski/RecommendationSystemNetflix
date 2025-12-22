@@ -9,7 +9,7 @@ from ...utils.data import paginate_dict
 router = APIRouter()
 
 @router.get(
-    "/list_users",
+    "/users",
     response_model=UsersResponse,
 )
 async def list_users(
@@ -47,7 +47,7 @@ async def list_users(
     }
 
 @router.get(
-    "/list_movies",
+    "/movies",
     response_model=ListMoviesResponse,
 )
 async def list_movies(
