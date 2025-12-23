@@ -1,9 +1,9 @@
 # api/app/models/recommend.py
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Any
 
 class MoviesResponse(BaseModel):
-    movies: Dict[str, float]
+    movies: Dict[int, Dict[str, Any]]
     page: int
     page_size: int
     total_movies: int

@@ -30,9 +30,9 @@ async def recommend(
             detail=f"Internal server error: expected a list of users, got {type(recs).__name__}"
         )
 
-    preds = order_dict(recs, True)
+    # preds = order_dict(recs, True)
 
-    paginated_preds = paginate_dict(preds, page, page_size)
+    paginated_preds = paginate_dict(recs, page, page_size)
 
     remapped_preds = remapping(paginated_preds, movie_mapping)
     

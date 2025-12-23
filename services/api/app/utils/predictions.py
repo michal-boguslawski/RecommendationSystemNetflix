@@ -56,12 +56,12 @@ def penalize_predictions(
     """
     temp_df = df.copy()
 
-    user_mean = temp_df["pred"].mean()
-    deviations = temp_df["pred"] - user_mean
+    user_mean = temp_df["Rating"].mean()
+    deviations = temp_df["Rating"] - user_mean
 
     shrinkage = temp_df["count"] / (temp_df["count"] + penalty)
     penalized_deviations = deviations * shrinkage
 
-    temp_df["pred"] = (user_mean + penalized_deviations).clip(min_pred, max_pred)
+    temp_df["Rating"] = (user_mean + penalized_deviations).clip(min_pred, max_pred)
 
     return temp_df

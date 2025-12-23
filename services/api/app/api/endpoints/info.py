@@ -14,13 +14,13 @@ router = APIRouter()
 )
 async def list_users(
     user_data_df: pd.DataFrame = Depends(get_users_data),
-    rated_movies: list[int] | None = None,
+    movies: list[int] | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, le=100),
 ):
     print(f"Start listing users")
     # Filter selected movies
-    users = await get_filtered_users(user_data_df, rated_movies)
+    users = await get_filtered_users(user_data_df, movies)
 
     # pagination
     start = (page - 1) * page_size

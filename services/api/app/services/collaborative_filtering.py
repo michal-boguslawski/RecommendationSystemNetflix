@@ -62,8 +62,8 @@ class InferenceUserBasedCollaborativeFilteringKNN(InferenceModel):
                 count=("Rating", "count")
             )
             .assign(
-                pred=lambda x: x["score"] / x["corr_sum"]
+                Rating=lambda x: x["score"] / x["corr_sum"]
             )
         )
         preds = penalize_predictions(preds, self.smoothing_factor)
-        return preds["pred"].to_dict()
+        return preds[["Rating"]].to_dict(orient="index")

@@ -7,18 +7,25 @@ from ...services.recommender import RecommenderService
 @cache(expire=300)  # cache for 5 minutes
 async def get_filtered_users(
     user_data_df: pd.DataFrame,
-    rated_movies: list[int] | None = None
+    movies: list[int] | None = None
 ) -> list[int]:
     """
     Returns unique, sorted user list filtered by rated_movies.
-    Only recomputes if user_data_df or rated_movies change.
+    Only recomputes if user_data_df or movies change.
     """
-    if rated_movies:
-        df_filtered = user_data_df[user_data_df["MovieID"].isin(rated_movies)]
-    else:
-        df_filtered = user_data_df
+    if movies:
+        # Filter only the movies we care about
+        df_filtered = user_data_df[user_data_df["MovieID"].isin(movies)]
+        
+        # Count how many unique movies each UserID has from the list
+        user_counts = df_filtered.groupby("UserID")["MovieID"].nunique()
 
-    users = df_filtered.index.unique().sort_values().to_list()
+        # Users who have all movies
+        users_with_all = user_counts[user_counts == len(movies)]
+    else:
+        users_with_all = user_data_df
+
+    users = users_with_all.index.unique().sort_values().to_list()
     return users
 
 @cache(expire=300)  # cache for 5 minutes
@@ -32,7 +39,7 @@ async def get_user_movies(
     """
     user_movies = user_data_df.loc[user_id]
     user_movies.set_index("MovieID", inplace=True)
-    return jsonable_encoder(user_movies["Rating"].to_dict())
+    return jsonable_encoder(user_movies[["Rating"]].to_dict(orient="index")) # type: ignore
 
 @cache(expire=300)
 async def get_recommendations(

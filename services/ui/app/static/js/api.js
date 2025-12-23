@@ -7,7 +7,7 @@ const endpoint_dict = {
     "recommendations": "recommend",
 }
 
-export async function call_api(type, id, page=1, page_size=20, movies) {
+export async function call_api({ type, id, page=1, page_size=20, movies }) {
     let url = `${uri}/${endpoint_dict[type]}`
 
     if (id) {
@@ -16,7 +16,15 @@ export async function call_api(type, id, page=1, page_size=20, movies) {
     url += `?page=${page}&pageSize=${page_size}`
 
     if (movies) {
-        url += `&movies=${movies.join(",")}`
+        if (Array.isArray(movies)) {
+            // Add each movie as its own query param
+            movies.forEach((m) => {
+                url += `&movies=${encodeURIComponent(m)}`;
+            });
+        } else {
+            // Single movie
+            url += `&movies=${encodeURIComponent(movies)}`;
+        }
     }
 
     console.log("API call:", url)

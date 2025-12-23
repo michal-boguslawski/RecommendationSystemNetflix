@@ -8,7 +8,12 @@ def filter_top_k(dict_: dict, k: int, desc: bool = True) -> dict:
     return dict(sorted(dict_.items(), key=lambda x: x[1], reverse=desc)[:k])
 
 def remapping(dict_: dict, mapping: dict) -> dict:
-    return {mapping[int(key)]: item for key, item in dict_.items()}
+    for key, item in dict_.items():
+        if int(key) not in mapping:
+            raise KeyError(f"Key {key} not found in mapping")
+
+        item["MovieName"] = mapping[int(key)]
+    return dict_
 
 def load_movie_mapping(df: pd.DataFrame) -> dict:
     movie_df = df.copy()
@@ -22,7 +27,7 @@ def drop_rated_movies(
     preds_dict: dict
 ):
     user_movies = user_data_df.loc[user_id]["MovieID"]
-    filtered_preds = {movie: preds_dict[movie] for movie in preds_dict if movie not in user_movies}
+    filtered_preds = {movie: value for movie, value in preds_dict.items() if movie not in user_movies}
     return filtered_preds
 
 def paginate_dict(dict_: dict, page: int, page_size: int) -> dict:
