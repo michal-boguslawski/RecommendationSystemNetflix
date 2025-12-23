@@ -1,0 +1,49 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <title>{% block title %}My Flask App{% endblock %}</title>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Header / Navbar -->
+    <header>
+        <nav>
+            <h1>FlaskApp</h1>
+            <!-- Add navigation links here -->
+        </nav>
+    </header>
+
+    <!-- Main content -->
+    <main>
+        <div id="outer-container">
+            <!-- First container -->
+            <section id="sidebar" class="sidebar">
+                {% block sidebar %}
+                    <a href="{{ url_for('home.home') }}">Home</a> <br>
+                    <a href="{{ url_for('movies.recommend') }}">Predict for existing user</a> <br>
+                    <a href="#">Predict for your selection</a>
+                {% endblock %}
+            </section>
+
+            <!-- Second container -->
+            <section id="content-container" class="inner-container">
+                {% block container %}
+                <p>Container 2 content goes here.</p>
+                {% endblock %}
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; {{ current_year }} My Flask App</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -73,7 +73,7 @@ export function set_pagination(type, page, totalPages, hasNext, hasPrev) {
 
     // Add prev button
     const prevButton = document.createElement("button");
-    prevButton.textContent = "Previous";
+    prevButton.textContent = "Prev";
     prevButton.dataset.page = start - 1;
 
     prevButton.classList.add("pagination-button");

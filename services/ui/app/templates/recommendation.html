@@ -1,33 +1,40 @@
+{% extends "base.html" %}
+
 <head>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 
-<title>Recommendations</title>
-<h1 id="moviesTitle">Recommended movies</h1>
+{% block title %}Users Recommendations{% endblock %}
 
-<div class="grid">
-  <section>
-    <h3>Users</h3>
-    <div id="users" class="option-list"></div>
-    <ul id="users_pagination" class="pagination"></ul>
-  </section>
-  <section>
-    <h3>Select Movies</h3>
-    <div id="movies" class="option-list"></div>
-    <ul id="movies_pagination" class="pagination"></ul>
-  </section>
-  <section>
-    <h3>Rated Movies for selected user</h3>
-    <div id="rated_movies" class="option-list"></div>
-    <ul id="rated_movies_pagination" class="pagination"></ul>
-  </section>
-  <section>
-    <h3>Recommendations</h3>
-    <div id="recommendations" class="option-list"></div>
-    <ul id="recommendations_pagination" class="pagination"></ul>
-  </section>
-</div>
+{% block container %}
+  <h1 id="moviesTitle">Recommended movies</h1>
 
-<button id="get_recommendations">Get Recommendations</button>
+  <div class="grid">
+    <section class="users">
+      <h3>Users</h3>
+      <div id="users" class="option-list"></div>
+      <ul id="users_pagination" class="pagination"></ul>
+    </section>
+    <section>
+      <h3>Select Movies</h3>
+      <div id="movies" class="option-list"></div>
+      <ul id="movies_pagination" class="pagination"></ul>
+    </section>
+    <section>
+      <h3>Rated Movies for selected user</h3>
+      <div id="rated_movies" class="option-list"></div>
+      <ul id="rated_movies_pagination" class="pagination"></ul>
+    </section>
+    <section>
+      <h3>Recommendations</h3>
+      <div id="recommendations" class="option-list"></div>
+      <ul id="recommendations_pagination" class="pagination"></ul>
+    </section>
+  </div>
 
-<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <button id="get_recommendations">Get Recommendations</button>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
